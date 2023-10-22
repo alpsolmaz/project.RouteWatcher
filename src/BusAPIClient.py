@@ -6,20 +6,23 @@ class BusAPIClient:
     @classmethod
     def get_coordinates(cls, plaka):
         url = cls.BASE_URL.format(plaka.replace(" ", "%20"))
-        response = requests.get(url)
 
-        if response.status_code == 200:
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+
             data = response.json()
+
+            if not isinstance(data, dict) or not all(key in data for key in ["Location", "Latitude", "Longtitude"]):
+                raise Exception("Received unexpected data structure from the API.")
             
-            location = data.get("Location")
-            latitude = data.get("Latitude")
-            longitude = data.get("Longtitude") # NOTE: The external service has a typo in their response. They use "Longtitude" instead of the correct "Longitude".
-
+            location = data["Location"]
+            latitude = data["Latitude"]
+            longitude = data["Longtitude"]  # Typo in the external service.
+            
             return location, latitude, longitude
-        else:
-            print(f"Error {response.status_code}: {response.text}")
-            return None
-
-plaka_info = "35 PK 132"
-location, latitude, longitude = BusAPIClient.get_coordinates(plaka_info)
-print(f"Latitude: {latitude}, Longitude: {longitude}, Location: {location}")
+        
+        except requests.RequestException as e:
+            raise Exception(f"API Request Error: {str(e)}")
+        except Exception as e:
+            raise Exception(str(e))
